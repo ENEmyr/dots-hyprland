@@ -1,0 +1,70 @@
+{
+  "_comment": "Merge the ai.extraModels array into ~/.config/illogical-impulse/config.json. Every model id must exist in ~/.config/ii-ai-bridge/backends.json, except Ollama entries which point straight at the Ollama endpoint.",
+  "ai": {
+    "extraModels": [
+      {
+        "api_format": "openai",
+        "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
+        "icon": "spark-symbolic",
+        "model": "cc-sonnet",
+        "name": "Claude Sonnet",
+        "description": "Local | Claude Code CLI through ii-ai-bridge, tools disabled",
+        "requires_key": false
+      },
+      {
+        "api_format": "openai",
+        "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
+        "icon": "spark-symbolic",
+        "model": "cc-opus",
+        "name": "Claude Opus",
+        "description": "Local | Claude Code CLI through ii-ai-bridge, tools disabled",
+        "requires_key": false
+      },
+      {
+        "api_format": "openai",
+        "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
+        "icon": "openai-symbolic",
+        "model": "codex",
+        "name": "Codex",
+        "description": "Local | Codex CLI, read-only sandbox | no token streaming",
+        "requires_key": false
+      },
+      {
+        "api_format": "openai",
+        "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
+        "icon": "spark-symbolic",
+        "model": "agy-claude-sonnet",
+        "name": "Claude Sonnet 4.6 (Antigravity)",
+        "description": "Local | Antigravity CLI, sandboxed",
+        "requires_key": false
+      },
+      {
+        "api_format": "openai",
+        "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
+        "icon": "google-gemini-symbolic",
+        "model": "agy-gemini-flash",
+        "name": "Gemini Flash (Antigravity)",
+        "description": "Local | Antigravity CLI, sandboxed",
+        "requires_key": false
+      },
+      {
+        "api_format": "openai",
+        "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
+        "icon": "spark-symbolic",
+        "model": "remote-sonnet",
+        "name": "Claude Sonnet (remote)",
+        "description": "Remote | Claude Code on another machine over ssh, tools disabled",
+        "requires_key": false
+      },
+      {
+        "api_format": "openai",
+        "endpoint": "http://127.0.0.1:11435/v1/chat/completions",
+        "icon": "ollama-symbolic",
+        "model": "gemma4:e4b-it-qat",
+        "name": "Gemma 4 E4B (remote GPU)",
+        "description": "Remote | Ollama on another machine through the ssh tunnel on port 11435",
+        "requires_key": false
+      }
+    ]
+  }
+}

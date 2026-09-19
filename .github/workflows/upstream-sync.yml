@@ -1,0 +1,163 @@
+name: Sync upstream
+
+# Keeps this fork current with end-4/dots-hyprland.
+#
+# main is a plain mirror of upstream. omarchy is our branch and the default one:
+# it carries the omarchy/ directory and nothing else of ours. A sync is therefore
+# "merge main into omarchy", which only conflicts when upstream touches a file we
+# also touched, which today is none of them.
+#
+# Clean merge: the job opens a pull request by itself, no model involved.
+# Conflict: the second job asks Claude to reconcile it, with the rule that the
+# omarchy/ directory is ours and everything else follows upstream.
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.merge.outputs.status }}
+      branch: ${{ steps.merge.outputs.branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/end-4/dots-hyprland.git
+          git fetch upstream main --tags
+
+      - name: Fast-forward the main mirror
+        continue-on-error: true
+        run: git push origin upstream/main:main
+
+      - name: Merge upstream into a sync branch
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          branch="sync/upstream-$(date -u +%Y%m%d)"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "status=up-to-date" >> "$GITHUB_OUTPUT"
+            echo "Nothing new upstream."
+            exit 0
+          fi
+
+          git switch -c "$branch"
+
+          if ! git merge --no-edit upstream/main; then
+            git merge --abort || true
+            echo "status=conflict" >> "$GITHUB_OUTPUT"
+            echo "Merge conflicts, handing over to the reconcile job."
+            exit 0
+          fi
+
+          git submodule update --init --recursive --depth 1 || true
+
+          if bash omarchy/check-compat.sh; then
+            compat="passed"
+          else
+            compat="FAILED"
+          fi
+
+          git push origin "$branch"
+
+          body=$(printf 'Automatic merge of upstream/main into omarchy.\n\nCompatibility check: **%s**\n\nRun `omarchy/check-compat.sh` locally and deploy with `omarchy/install.sh` after merging.\n' "$compat")
+          gh pr create --base omarchy --head "$branch" \
+            --title "Sync upstream ($(date -u +%Y-%m-%d)), compat $compat" \
+            --body "$body"
+
+          if [ "$compat" = "passed" ]; then
+            echo "status=clean" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=compat-failed" >> "$GITHUB_OUTPUT"
+          fi
+
+  reconcile:
+    needs: merge
+    if: needs.merge.outputs.status == 'conflict'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for the Claude credential
+        id: cred
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open an issue when no credential is configured
+        if: steps.cred.outputs.present == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Upstream sync conflicts and no CLAUDE_CODE_OAUTH_TOKEN is set" \
+            --body "The weekly upstream merge hit conflicts. Add the CLAUDE_CODE_OAUTH_TOKEN secret (claude setup-token) to let the reconcile job resolve them, or merge upstream/main into omarchy by hand."
+
+      - uses: actions/checkout@v4
+        if: steps.cred.outputs.present == 'true'
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: anthropics/claude-code-action@v1
+        if: steps.cred.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --max-turns 30
+            --allowedTools "Bash(git *),Bash(bash omarchy/check-compat.sh),Bash(gh pr create *),Read,Edit,Grep,Glob"
+          prompt: |
+            This repository is a fork of end-4/dots-hyprland. The branch `omarchy` is ours and
+            adds exactly one directory, `omarchy/`, on top of upstream. Everything outside
+            `omarchy/` belongs to upstream.
+
+            Task: merge `upstream/main` into `omarchy` and resolve the conflicts.
+
+            Steps:
+            1. `git config user.name "github-actions[bot]"` and
+               `git config user.email "41898282+github-actions[bot]@users.noreply.github.com"`
+            2. `git remote add upstream https://github.com/end-4/dots-hyprland.git` and
+               `git fetch upstream main`
+            3. `git switch -c sync/upstream-$(date -u +%Y%m%d)` from `omarchy`
+            4. `git merge upstream/main` and resolve every conflict with these rules:
+               - Any file under `omarchy/` keeps our version unchanged. Upstream never edits it.
+               - Every other file takes upstream's version, unless our side carries a change
+                 that is clearly deliberate, in which case keep both intents and explain it in
+                 the pull request body.
+               - Never resolve a conflict by deleting a file upstream added.
+            5. Run `bash omarchy/check-compat.sh`. If it fails, do not paper over it: read
+               `omarchy/shell.qml` and fix what upstream renamed or moved, then run it again.
+            6. Commit, push the branch, and open a pull request against `omarchy` with
+               `gh pr create`. In the body list every conflicted file, how you resolved it, and
+               the compatibility check result.
+
+            If the merge turns out to be clean, open the pull request anyway and say so.
+            Do not push to `omarchy` or `main` directly. Do not modify anything under
+            `omarchy/` unless step 5 forces it, and say so explicitly if it does.

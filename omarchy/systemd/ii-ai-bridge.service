@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenAI-compatible bridge from the ii sidebar to local agent CLIs
+Documentation=https://github.com/ENEmyr/dots-hyprland/tree/omarchy/omarchy
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.local/bin/ii-ai-bridge
+Restart=on-failure
+RestartSec=2
+Environment=II_AI_BRIDGE_PORT=8765
+
+[Install]
+WantedBy=default.target

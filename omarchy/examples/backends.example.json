@@ -1,0 +1,48 @@
+{
+  "_comment": "Copy to ~/.config/ii-ai-bridge/backends.json and edit. Every entry becomes a model id the sidebar can select. kind is one of claude, ssh_claude, codex, agy.",
+
+  "binaries": {
+    "claude": "claude",
+    "codex": "codex",
+    "agy": "agy",
+    "ssh": "/usr/bin/ssh"
+  },
+
+  "backends": {
+    "cc-sonnet": {
+      "kind": "claude",
+      "model": "sonnet",
+      "config_dir": "~/.claude"
+    },
+    "cc-opus": {
+      "kind": "claude",
+      "model": "opus",
+      "config_dir": "~/.claude"
+    },
+    "second-account-sonnet": {
+      "_comment": "A second Claude Code login lives in its own CLAUDE_CONFIG_DIR.",
+      "kind": "claude",
+      "model": "sonnet",
+      "config_dir": "~/.claude-other-account"
+    },
+    "remote-sonnet": {
+      "_comment": "Runs claude over ssh on another machine. The ssh host must work with BatchMode=yes.",
+      "kind": "ssh_claude",
+      "model": "sonnet",
+      "host": "your-ssh-host"
+    },
+    "codex": {
+      "kind": "codex",
+      "model": null
+    },
+    "agy-gemini-flash": {
+      "_comment": "Antigravity CLI. Run 'agy models' for the id list.",
+      "kind": "agy",
+      "model": "gemini-3.8-flash-medium"
+    },
+    "agy-claude-sonnet": {
+      "kind": "agy",
+      "model": "claude-sonnet-4-6"
+    }
+  }
+}

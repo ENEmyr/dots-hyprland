@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Toggle the illogical-impulse left sidebar (AI chat + anime tabs).
+# It runs as its own quickshell instance, config ~/.config/quickshell/ii-sidebar,
+# separate from the Omarchy shell. Starts the instance if it is not running yet.
+set -uo pipefail
+
+if qs -c ii-sidebar ipc call sidebarLeft toggle >/dev/null 2>&1; then
+  exit 0
+fi
+
+qs -d -n -c ii-sidebar >/dev/null 2>&1
+
+for _ in $(seq 1 50); do
+  sleep 0.1
+  if qs -c ii-sidebar ipc call sidebarLeft open >/dev/null 2>&1; then
+    exit 0
+  fi
+done
+
+notify-send "ii sidebar" "Failed to start quickshell instance ii-sidebar" 2>/dev/null
+exit 1
