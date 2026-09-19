@@ -36,7 +36,13 @@ command -v quickshell >/dev/null || warn "quickshell not found in PATH"
 command -v rsync >/dev/null || { echo "rsync is required" >&2; exit 1; }
 [ -d /usr/lib/qt6/qml/Qt5Compat/GraphicalEffects ] || warn "qt6-5compat missing"
 [ -d /usr/lib/qt6/qml/org/kde/syntaxhighlighting ] || [ -d /usr/lib/qt6/qml/org/kde/syntaxhighlighting.disabled ] || warn "KDE syntax-highlighting QML module missing (Arch package: syntax-highlighting)"
-fc-list 2>/dev/null | grep -qi 'material symbols' || warn "Material Symbols font missing (Arch package: ttf-material-symbols-variable)"
+# grep -q exits early, which makes fc-list die of SIGPIPE and, under
+# pipefail, would report the font as missing even when it is installed.
+installed_fonts="$(fc-list 2>/dev/null || true)"
+case "$installed_fonts" in
+    *[Mm]aterial\ [Ss]ymbols*) ;;
+    *) warn "Material Symbols font missing (Arch package: ttf-material-symbols-variable)" ;;
+esac
 
 if [ ! -e "$REPO_ROOT/dots/.config/quickshell/ii/modules/common/widgets/shapes/material-shapes.js" ]; then
     echo "submodule dots/.config/quickshell/ii/modules/common/widgets/shapes is not checked out." >&2
